@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "swedenhack",
+  "version": "${version}",
+  "name": "Swedenhack",
+  "description": "A Fabric utility mod for Minecraft.",
+  "authors": [
+    "Leonetic",
+    "widerthaneurasia"
+  ],
+  "contact": {
+  },
+  "license": "AGPL-3.0-or-later",
+  "icon": "assets/swedenhack/icon.png",
+  "environment": "client",
+  "accessWidener": "swedenhack.accesswidener",
+  "entrypoints": {
+    "client": [
+      "dev.leonetic.Swedenhack"
+    ],
+    "main": [
+      "dev.leonetic.Swedenhack"
+    ]
+  },
+  "mixins": [
+    "swedenhack.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
