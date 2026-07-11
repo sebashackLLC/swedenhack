@@ -38,8 +38,9 @@ public class SeeThroughModule extends Module {
 
     // General Settings Page
     public Setting<ChamsMode> chamsMode    = mode("Mode", ChamsMode.Texture).setPage("General");
-    public Setting<Color>     fillColor    = color("Fill Color", 0, 255, 255, 100).setPage("General").setVisibility(v -> chamsMode.getValue() == ChamsMode.Fill || chamsMode.getValue() == ChamsMode.Both);
-    public Setting<Color>     outlineColor = color("Outline Color", 0, 255, 255, 255).setPage("General").setVisibility(v -> chamsMode.getValue() == ChamsMode.Outline || chamsMode.getValue() == ChamsMode.Both);
+    public Setting<Boolean>   syncColor    = bool("Sync Color", false).setPage("General");
+    public Setting<Color>     fillColor    = color("Fill Color", 0, 255, 255, 100).setPage("General").setVisibility(v -> !syncColor.getValue() && (chamsMode.getValue() == ChamsMode.Fill || chamsMode.getValue() == ChamsMode.Both));
+    public Setting<Color>     outlineColor = color("Outline Color", 0, 255, 255, 255).setPage("General").setVisibility(v -> !syncColor.getValue() && (chamsMode.getValue() == ChamsMode.Outline || chamsMode.getValue() == ChamsMode.Both));
     public Setting<Float>     lineWidth    = num("Line Width", 1.5f, 0.5f, 5.0f).setPage("General").setVisibility(v -> chamsMode.getValue() == ChamsMode.Outline || chamsMode.getValue() == ChamsMode.Both);
     public Setting<Boolean>   entityPulse  = bool("Pulse", false).setPage("General").setVisibility(v -> chamsMode.getValue() != ChamsMode.Texture);
     public Setting<Boolean>   hideModel    = bool("Hide Model", true).setPage("General").setVisibility(v -> chamsMode.getValue() != ChamsMode.Texture);
@@ -56,8 +57,8 @@ public class SeeThroughModule extends Module {
     // Crystals Settings Page
     public Setting<Boolean>     crystalPulse        = bool("Crystal Pulse", false).setPage("Crystals");
     public Setting<CrystalMode> crystalMode         = mode("Crystal Mode", CrystalMode.Both).setPage("Crystals");
-    public Setting<Color>       crystalFillColor    = color("Crystal Fill Color", 255, 50, 255, 100).setPage("Crystals").setVisibility(v -> crystalMode.getValue() == CrystalMode.Fill || crystalMode.getValue() == CrystalMode.Both);
-    public Setting<Color>       crystalOutlineColor = color("Crystal Outline Color", 255, 50, 255, 255).setPage("Crystals").setVisibility(v -> crystalMode.getValue() == CrystalMode.Outline || crystalMode.getValue() == CrystalMode.Both);
+    public Setting<Color>       crystalFillColor    = color("Crystal Fill Color", 255, 50, 255, 100).setPage("Crystals").setVisibility(v -> !syncColor.getValue() && (crystalMode.getValue() == CrystalMode.Fill || crystalMode.getValue() == CrystalMode.Both));
+    public Setting<Color>       crystalOutlineColor = color("Crystal Outline Color", 255, 50, 255, 255).setPage("Crystals").setVisibility(v -> !syncColor.getValue() && (crystalMode.getValue() == CrystalMode.Outline || crystalMode.getValue() == CrystalMode.Both));
 
     // Entity Filters Page
     public Setting<Boolean> players      = bool("Players",     true).setPage("Entities");
@@ -101,6 +102,12 @@ public class SeeThroughModule extends Module {
                 Color fillCol = fillColor.getValue();
                 Color wireCol = outlineColor.getValue();
 
+                if (syncColor.getValue()) {
+                    Color ui = Swedenhack.colorManager.get("ui");
+                    fillCol = new Color(ui.getRed(), ui.getGreen(), ui.getBlue(), fillCol.getAlpha());
+                    wireCol = new Color(ui.getRed(), ui.getGreen(), ui.getBlue(), wireCol.getAlpha());
+                }
+
                 boolean isFriend = livingEntity instanceof net.minecraft.world.entity.player.Player &&
                         Swedenhack.friendManager != null &&
                         Swedenhack.friendManager.isFriend(livingEntity.getName().getString());
@@ -112,6 +119,10 @@ public class SeeThroughModule extends Module {
                     } else if (friendMode.getValue() == FriendMode.Default) {
                         fillCol = new Color(85, 255, 255, fillCol.getAlpha());
                         wireCol = new Color(85, 255, 255, wireCol.getAlpha());
+                    } else if (friendMode.getValue() == FriendMode.Sync) {
+                        Color ui = Swedenhack.colorManager.get("ui");
+                        fillCol = new Color(ui.getRed(), ui.getGreen(), ui.getBlue(), fillCol.getAlpha());
+                        wireCol = new Color(ui.getRed(), ui.getGreen(), ui.getBlue(), wireCol.getAlpha());
                     }
                 }
 
@@ -150,6 +161,12 @@ public class SeeThroughModule extends Module {
                 if (inRange(entity, crystals, crystalsRange)) {
                     Color fillCol = crystalFillColor.getValue();
                     Color wireCol = crystalOutlineColor.getValue();
+
+                    if (syncColor.getValue()) {
+                        Color ui = Swedenhack.colorManager.get("ui");
+                        fillCol = new Color(ui.getRed(), ui.getGreen(), ui.getBlue(), fillCol.getAlpha());
+                        wireCol = new Color(ui.getRed(), ui.getGreen(), ui.getBlue(), wireCol.getAlpha());
+                    }
 
                     if (crystalPulse.getValue()) {
                         fillCol = getPulseColor(fillCol);

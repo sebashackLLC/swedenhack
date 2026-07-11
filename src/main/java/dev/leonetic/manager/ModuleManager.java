@@ -19,6 +19,7 @@ import dev.leonetic.features.modules.funny.TrickshotModule;
 import dev.leonetic.features.modules.funny.FakePlayerModule;
 import dev.leonetic.features.modules.movement.SprintModule;
 import dev.leonetic.features.modules.movement.VelocityModule;
+import dev.leonetic.features.modules.movement.ElytraChestflyModule;
 import dev.leonetic.features.modules.world.AutoPortalModule;
 import dev.leonetic.features.modules.world.FastPortalModule;
 import dev.leonetic.features.modules.world.BomberModule;
@@ -43,6 +44,7 @@ import dev.leonetic.features.modules.render.TablistModule;
 import dev.leonetic.features.modules.render.NoRenderModule;
 import dev.leonetic.features.modules.render.WorldVisualsModule;
 import dev.leonetic.features.modules.render.ViewModel;
+import dev.leonetic.features.modules.render.SmallShield;
 import dev.leonetic.features.modules.render.BreakIndicators;
 import dev.leonetic.features.modules.render.PopEffectsModule;
 import dev.leonetic.features.modules.render.ScreenEffectsModule;
@@ -67,6 +69,7 @@ public class ModuleManager implements Jsonable, Util {
         register(new NotificationsModule());
         register(new TargetsModule());
         register(new AutoTrapModule());
+        register(new AutoTrapHwModule());
         register(new OffhandModule());
         register(new AutoLogModule());
         register(new AutoSwordModule());
@@ -81,6 +84,7 @@ public class ModuleManager implements Jsonable, Util {
         register(new dev.leonetic.features.modules.movement.ElytraAssistModule());
         register(new dev.leonetic.features.modules.movement.ElytraFlyModule());
         register(new dev.leonetic.features.modules.movement.ElytraDashModule());
+        register(new ElytraChestflyModule());
 
         register(new AutoPortalModule());
         register(new FastPortalModule());
@@ -96,6 +100,7 @@ public class ModuleManager implements Jsonable, Util {
         register(new NoRenderModule());
         register(new WorldVisualsModule());
         register(new ViewModel());
+        register(new SmallShield());
         register(new BreakIndicators());
         register(new ShadersModule());
         register(new SkyboxModule());

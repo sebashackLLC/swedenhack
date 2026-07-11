@@ -99,7 +99,14 @@ public final class SeeThroughRender {
                 ? null
                 : dev.leonetic.Swedenhack.moduleManager.getModuleByClass(dev.leonetic.features.modules.render.SeeThroughModule.class);
         if (seeThrough != null && seeThrough.isEnabled()) {
-            updateTextureColors(seeThrough.fillColor.getValue(), seeThrough.outlineColor.getValue());
+            java.awt.Color fill = seeThrough.fillColor.getValue();
+            java.awt.Color outline = seeThrough.outlineColor.getValue();
+            if (seeThrough.syncColor.getValue()) {
+                java.awt.Color ui = dev.leonetic.Swedenhack.colorManager.get("ui");
+                fill = new java.awt.Color(ui.getRed(), ui.getGreen(), ui.getBlue(), fill.getAlpha());
+                outline = new java.awt.Color(ui.getRed(), ui.getGreen(), ui.getBlue(), outline.getAlpha());
+            }
+            updateTextureColors(fill, outline);
         }
     }
 

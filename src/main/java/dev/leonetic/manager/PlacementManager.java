@@ -447,6 +447,7 @@ public class PlacementManager extends Feature {
         AABB checkBox = new AABB(airPos);
         for (Entity e : mc.level.getEntities(null, checkBox)) {
             if (e instanceof ItemEntity) continue;
+            if (e instanceof net.minecraft.world.entity.player.Player) continue;
             if (e instanceof EndCrystal crystal && crystal.tickCount < 5) continue;
             if (e instanceof EndCrystal crystal && crystal.blockPosition().equals(airPos)) continue;
             return false;

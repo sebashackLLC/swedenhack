@@ -33,6 +33,9 @@ public class ClickGuiModule extends Module {
     public Setting<String> prefix = str("Prefix", ".");
     public Setting<Theme> theme = mode("Theme", Theme.SWEDENHACK);
     public Setting<Color> customColor = color("Custom Color", 120, 170, 210, 220);
+    public Setting<Color> gradientStart = color("Gradient Start", 140, 26, 38, 220);
+    public Setting<Color> gradientEnd = color("Gradient End", 190, 72, 82, 220);
+    public Setting<Float> gradientSpeed = num("Gradient Speed", 1.0f, 0.1f, 5.0f);
     public Setting<Boolean> smooth = bool("Smooth", true);
     public Setting<Integer> rainbowHue = num("Delay", 240, 0, 600);
     public Setting<Float> rainbowBrightness = num("Brightness", 200.0f, 1.0f, 255.0f);
@@ -69,6 +72,7 @@ public class ClickGuiModule extends Module {
         if (t == Theme.RAINBOW) return rainbowAt(yOffset);
         if (t == Theme.SWEDEN) return swedenAt(yOffset);
         if (t == Theme.CUSTOM) return customColor.getValue();
+        if (t == Theme.GRADIENT) return gradientAt(yOffset);
         if (t == Theme.SWEDENHACK) return SWEDENHACK_ACCENT;
         if (cat == null) return CAT_CLIENT;
         switch (cat) {
@@ -94,6 +98,7 @@ public class ClickGuiModule extends Module {
         if (t == Theme.RAINBOW) return rainbowAt(0f);
         if (t == Theme.SWEDEN) return swedenAt(0f);
         if (t == Theme.CUSTOM) return customColor.getValue();
+        if (t == Theme.GRADIENT) return gradientStart.getValue();
         if (t == Theme.SWEDENHACK) return SWEDENHACK_ACCENT;
         return Color.WHITE;
     }
@@ -104,6 +109,44 @@ public class ClickGuiModule extends Module {
 
     public Color swedenAt(float yOffset) {
         return dev.leonetic.util.ColorUtil.sweden((int) (yOffset / 10f * rainbowHue.getValue()));
+    }
+
+    public Color gradientAt(float yOffset) {
+        Color start = gradientStart.getValue();
+        Color end = gradientEnd.getValue();
+        float speed = gradientSpeed.getValue();
+        long time = System.currentTimeMillis();
+        float t = ((time / 500.0f * speed + yOffset / 150.0f) % 1.0f);
+        int r = (int) (start.getRed() + (end.getRed() - start.getRed()) * t);
+        int g = (int) (start.getGreen() + (end.getGreen() - start.getGreen()) * t);
+        int b = (int) (start.getBlue() + (end.getBlue() - start.getBlue()) * t);
+        int a = (int) (start.getAlpha() + (end.getAlpha() - start.getAlpha()) * t);
+        return new Color(r, g, b, a);
+    }
+
+    public static Color[] gradientPair(float yOffset) {
+        ClickGuiModule cgm = getInstance();
+        if (cgm == null) return new Color[]{new Color(140, 26, 38, 220), new Color(190, 72, 82, 220)};
+        Color start = cgm.gradientStart.getValue();
+        Color end = cgm.gradientEnd.getValue();
+        float speed = cgm.gradientSpeed.getValue();
+        long time = System.currentTimeMillis();
+        float pos = ((time / 250.0f * speed + yOffset / 150.0f) % 4.0f);
+        float t = pos <= 2.0f ? pos / 2.0f : (4.0f - pos) / 2.0f;
+        float t2 = (t + 0.5f) % 1.0f;
+        Color left = new Color(
+            (int)(start.getRed() + (end.getRed() - start.getRed()) * t),
+            (int)(start.getGreen() + (end.getGreen() - start.getGreen()) * t),
+            (int)(start.getBlue() + (end.getBlue() - start.getBlue()) * t),
+            (int)(start.getAlpha() + (end.getAlpha() - start.getAlpha()) * t)
+        );
+        Color right = new Color(
+            (int)(start.getRed() + (end.getRed() - start.getRed()) * t2),
+            (int)(start.getGreen() + (end.getGreen() - start.getGreen()) * t2),
+            (int)(start.getBlue() + (end.getBlue() - start.getBlue()) * t2),
+            (int)(start.getAlpha() + (end.getAlpha() - start.getAlpha()) * t2)
+        );
+        return new Color[]{left, right};
     }
 
     public float getExpandSpeed() {
@@ -125,6 +168,9 @@ public class ClickGuiModule extends Module {
         rainbowBrightness.setVisibility(v -> theme.getValue() == Theme.RAINBOW);
         rainbowSaturation.setVisibility(v -> theme.getValue() == Theme.RAINBOW);
         customColor.setVisibility(v -> theme.getValue() == Theme.CUSTOM);
+        gradientStart.setVisibility(v -> theme.getValue() == Theme.GRADIENT);
+        gradientEnd.setVisibility(v -> theme.getValue() == Theme.GRADIENT);
+        gradientSpeed.setVisibility(v -> theme.getValue() == Theme.GRADIENT);
         fontName.setVisibility(v -> clickGuiFont.getValue() || hudFont.getValue());
         fontScale.setVisibility(v -> clickGuiFont.getValue() || hudFont.getValue());
         menuEffectAlpha.setVisibility(v -> menuEffect.getValue() != MenuEffect.NONE);
@@ -157,11 +203,19 @@ public class ClickGuiModule extends Module {
         mc.setScreen(SwedenhackGui.getClickGui());
     }
 
+    public Color uiAccent() {
+        Theme t = theme.getValue();
+        if (t == Theme.RAINBOW) return rainbowAt(0f);
+        if (t == Theme.SWEDEN) return swedenAt(0f);
+        if (t == Theme.CUSTOM) return customColor.getValue();
+        if (t == Theme.GRADIENT) return gradientStart.getValue();
+        if (t == Theme.SWEDENHACK) return SWEDENHACK_ACCENT;
+        return CAT_RENDER;
+    }
+
     @Override
     public void onLoad() {
-
-        Color fixedAccent = new Color(120, 175, 220, 220);
-        Swedenhack.colorManager.register("ui", () -> fixedAccent);
+        Swedenhack.colorManager.register("ui", this::uiAccent);
         Swedenhack.colorManager.register("chat", this::chatAccent);
         Swedenhack.colorManager.register("chatBracket", this::chatAccent);
         Swedenhack.commandManager.setCommandPrefix(this.prefix.getValue());
@@ -185,7 +239,7 @@ public class ClickGuiModule extends Module {
     }
 
     public enum Theme {
-        SWEDENHACK, COLORS, CUSTOM, RAINBOW, SWEDEN
+        SWEDENHACK, COLORS, CUSTOM, RAINBOW, SWEDEN, GRADIENT
     }
 
     public enum MenuEffect {

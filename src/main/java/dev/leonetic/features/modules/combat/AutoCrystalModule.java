@@ -1,6 +1,7 @@
 package dev.leonetic.features.modules.combat;
 
 import dev.leonetic.Swedenhack;
+import dev.leonetic.event.impl.ClientEvent;
 import dev.leonetic.event.impl.entity.player.PreTickEvent;
 import dev.leonetic.event.impl.network.PacketEvent;
 import dev.leonetic.event.impl.render.Render2DEvent;
@@ -45,8 +46,8 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
 import dev.leonetic.util.EnchantmentUtil;
 import net.minecraft.world.level.BlockGetter;
@@ -93,10 +94,17 @@ public class AutoCrystalModule extends Module {
     private final Setting<Boolean> debug         = bool("Debug", false).setPage("Extra");
     private final Setting<Boolean> packetLog     = bool("PacketLog", false).setPage("Extra");
     private final Setting<Boolean> render        = bool("Render", true).setPage("Extra");
+    private final Setting<Boolean> syncColor     = bool("SyncColor", false).setPage("Extra");
     private final Setting<Float>   renderLineWidth = num("RenderLineWidth", 1.5f, 0.5f, 5.0f).setPage("Extra");
     private final Setting<java.awt.Color> renderFillColor = color("RenderFillColor", 255, 0, 0, 40).setPage("Extra");
     private final Setting<java.awt.Color> renderLineColor = color("RenderLineColor", 255, 0, 0, 200).setPage("Extra");
     private final Setting<Integer> renderFadeMs  = num("RenderFadeMs", 500, 0, 3000).setPage("Extra");
+    private final Setting<Boolean> renderSlide   = bool("RenderSlide", true).setPage("Extra");
+    private final Setting<Integer> slideDuration = num("SlideDuration", 200, 0, 1000).setPage("Extra");
+    private final Setting<Boolean> renderCrystalIcon = bool("RenderCrystalIcon", true).setPage("Extra");
+    private final Setting<Float> crystalIconScale = num("CrystalIconScale", 1.0f, 0.5f, 3.0f).setPage("Extra");
+    private final Setting<Float> crystalIconYOffset = num("CrystalIconYOffset", 2.0f, -20.0f, 20.0f).setPage("Extra");
+    private final Setting<Boolean> renderDamage = bool("RenderDamage", true).setPage("Extra");
 
     private static final double  PLACE_RANGE    = 5.14;
     private static final double  BASE_PLACE_RANGE = 5.154;
@@ -158,6 +166,49 @@ public class AutoCrystalModule extends Module {
         basePlaceMinDamage.setVisibility(v -> basePlace.getValue());
         antiChineseRange.setVisibility(v -> antiChinese.getValue());
         antiChineseEnemyRange.setVisibility(v -> antiChinese.getValue());
+        renderSlide.setVisibility(v -> render.getValue());
+        slideDuration.setVisibility(v -> render.getValue() && renderSlide.getValue());
+        crystalIconScale.setVisibility(v -> render.getValue() && renderCrystalIcon.getValue());
+        crystalIconYOffset.setVisibility(v -> render.getValue() && renderCrystalIcon.getValue());
+        renderDamage.setVisibility(v -> render.getValue());
+    }
+
+    private boolean isRegistered = false;
+
+    @Override
+    public void enable() {
+        this.enabled.setValue(true);
+        if (!isRegistered) {
+            EVENT_BUS.register(this);
+            isRegistered = true;
+        }
+        EVENT_BUS.post(new ClientEvent(ClientEvent.Type.TOGGLE_MODULE, this));
+        this.onToggle();
+        this.onEnable();
+    }
+
+    @Override
+    public void disable() {
+        this.enabled.setValue(false);
+        EVENT_BUS.post(new ClientEvent(ClientEvent.Type.TOGGLE_MODULE, this));
+        this.onToggle();
+        this.onDisable();
+        checkUnregister();
+    }
+
+    private void checkUnregister() {
+        if (isEnabled()) return;
+        int fadeMs = renderFadeMs.getValue();
+        long elapsed = System.currentTimeMillis() - lastPlaceTimeMs;
+        if (lastPlaceTarget == null || fadeMs <= 0 || elapsed >= fadeMs) {
+            if (isRegistered) {
+                EVENT_BUS.unregister(this);
+                isRegistered = false;
+            }
+            lastPlaceTarget = null;
+            animPlaceTarget = null;
+            animPrevPos = null;
+        }
     }
 
     @Override
@@ -185,12 +236,11 @@ public class AutoCrystalModule extends Module {
         deadIds.clear();
         lastBestDamage = 0;
         resetDiag();
-        lastPlaceTarget = null;
-        lastPlaceTimeMs = 0L;
     }
 
     @Subscribe
     private void onPacketReceive(PacketEvent.Receive event) {
+        if (!isEnabled()) return;
         if (mc.level == null) return;
 
         if (event.getPacket() instanceof ClientboundEntityEventPacket pkt) {
@@ -208,6 +258,7 @@ public class AutoCrystalModule extends Module {
 
     @Subscribe
     private void onPacketSendDiag(PacketEvent.Send event) {
+        if (!isEnabled()) return;
         if (!packetLog.getValue()) return;
         diagSendCounts.computeIfAbsent(event.getPacket().getClass().getSimpleName(), k -> new int[1])[0]++;
         diagWindowSends++;
@@ -219,6 +270,7 @@ public class AutoCrystalModule extends Module {
 
     @Subscribe(priority = 100)
     private void onDiagTickBoundary(PreTickEvent event) {
+        if (!isEnabled()) return;
         if (!packetLog.getValue()) return;
         int tickDelta = (int) (diagLifetimeSends - diagLastTickSends);
         diagLastTickSends = diagLifetimeSends;
@@ -334,6 +386,7 @@ public class AutoCrystalModule extends Module {
 
     @Subscribe(priority = -100)
     private void onPreTickRestore(PreTickEvent event) {
+        if (!isEnabled()) return;
         if (pendingSwapHandle != null) {
             Swedenhack.swapManager.release(pendingSwapHandle);
             pendingSwapHandle = null;
@@ -342,6 +395,7 @@ public class AutoCrystalModule extends Module {
 
     @Subscribe
     private void onPreTick(PreTickEvent event) {
+        if (!isEnabled()) return;
         if (nullCheck() || mc.player.isDeadOrDying()) return;
 
         OffhandModule offhand = Swedenhack.moduleManager.getModuleByClass(OffhandModule.class);
@@ -942,12 +996,11 @@ public class AutoCrystalModule extends Module {
             diagPlaceSent++;
             crystalPlaces.put(base.above().asLong(), System.currentTimeMillis());
             
-            // Trigger animation
+            // Trigger animation - store previous position BEFORE updating state
             Vec3 newPos = new Vec3(base.getX() + 0.5, base.getY() + 0.5, base.getZ() + 0.5);
-            if (animPlaceTarget != null && lastPlaceTarget != null) {
-                animPrevPos = new Vec3(lastPlaceTarget.base.getX() + 0.5,
-                                       lastPlaceTarget.base.getY() + 0.5,
-                                       lastPlaceTarget.base.getZ() + 0.5);
+            long elapsedSinceLastPlace = System.currentTimeMillis() - lastPlaceTimeMs;
+            if (lastPlaceTarget != null && elapsedSinceLastPlace < renderFadeMs.getValue()) {
+                animPrevPos = new Vec3(lastPlaceTarget.base.getX() + 0.5, lastPlaceTarget.base.getY() + 0.5, lastPlaceTarget.base.getZ() + 0.5);
             } else {
                 animPrevPos = newPos;
             }
@@ -1243,7 +1296,10 @@ public class AutoCrystalModule extends Module {
 
     @Subscribe
     public void onRender3D(Render3DEvent event) {
-        if (mc.level == null || mc.player == null || lastPlaceTarget == null || !render.getValue()) return;
+        if (mc.level == null || mc.player == null || lastPlaceTarget == null || !render.getValue()) {
+            checkUnregister();
+            return;
+        }
 
         // Compute fade alpha: 1.0 when just placed, fading to 0 over renderFadeMs
         int fadeMs = renderFadeMs.getValue();
@@ -1253,7 +1309,10 @@ public class AutoCrystalModule extends Module {
         } else {
             long elapsed = System.currentTimeMillis() - lastPlaceTimeMs;
             alpha = 1.0f - (float) elapsed / fadeMs;
-            if (alpha <= 0f) return; // fully faded, skip
+            if (alpha <= 0f) {
+                checkUnregister();
+                return; // fully faded, skip
+            }
             alpha = Math.min(alpha, 1.0f);
         }
 
@@ -1267,6 +1326,12 @@ public class AutoCrystalModule extends Module {
         java.awt.Color baseFill = renderFillColor.getValue();
         java.awt.Color baseLine = renderLineColor.getValue();
 
+        if (syncColor.getValue()) {
+            java.awt.Color uiColor = Swedenhack.colorManager.get("ui");
+            baseFill = new java.awt.Color(uiColor.getRed(), uiColor.getGreen(), uiColor.getBlue(), baseFill.getAlpha());
+            baseLine = new java.awt.Color(uiColor.getRed(), uiColor.getGreen(), uiColor.getBlue(), baseLine.getAlpha());
+        }
+
         java.awt.Color fill = new java.awt.Color(baseFill.getRed(), baseFill.getGreen(), baseFill.getBlue(),
                 Math.round(baseFill.getAlpha() * alpha));
         java.awt.Color line = new java.awt.Color(baseLine.getRed(), baseLine.getGreen(), baseLine.getBlue(),
@@ -1275,16 +1340,21 @@ public class AutoCrystalModule extends Module {
         RenderUtil.drawBoxFilled(event.getMatrix(), box, fill);
         RenderUtil.drawBox(event.getMatrix(), box, line, renderLineWidth.getValue());
 
+        checkUnregister();
     }
 
     private Vec3 getAnimatedPosition(BlockPos targetPos) {
         Vec3 target = new Vec3(targetPos.getX() + 0.5, targetPos.getY() + 0.5, targetPos.getZ() + 0.5);
         
-        if (animPrevPos == null || animPlaceTarget == null) {
+        if (!renderSlide.getValue() || animPrevPos == null || animPlaceTarget == null) {
             return target;
         }
 
-        long animDuration = 200; // 200ms animation
+        long animDuration = slideDuration.getValue();
+        if (animDuration <= 0) {
+            return target;
+        }
+
         long elapsed = System.currentTimeMillis() - animStartTimeMs;
         float progress = Math.min((float) elapsed / animDuration, 1.0f);
         
@@ -1296,8 +1366,14 @@ public class AutoCrystalModule extends Module {
 
     @Subscribe
     public void onRender2D(Render2DEvent event) {
-        if (mc.level == null || mc.player == null || lastPlaceTarget == null || !render.getValue()) return;
-        if (MatrixCapture.projection == null) return;
+        if (mc.level == null || mc.player == null || lastPlaceTarget == null || !render.getValue()) {
+            checkUnregister();
+            return;
+        }
+        if (MatrixCapture.projection == null) {
+            checkUnregister();
+            return;
+        }
 
         // Compute fade alpha
         int fadeMs = renderFadeMs.getValue();
@@ -1307,15 +1383,45 @@ public class AutoCrystalModule extends Module {
         } else {
             long elapsed = System.currentTimeMillis() - lastPlaceTimeMs;
             alpha = 1.0f - (float) elapsed / fadeMs;
-            if (alpha <= 0f) return;
+            if (alpha <= 0f) {
+                checkUnregister();
+                return;
+            }
             alpha = Math.min(alpha, 1.0f);
         }
 
-        if (lastPlaceTarget.damage > 0) {
+ if (lastPlaceTarget.damage > 0) {
             BlockPos pos = lastPlaceTarget.base;
             Vec3 textPos = getAnimatedPosition(pos);
-            renderDamageText2D(event, textPos, lastPlaceTarget.damage, alpha);
+            
+            if (renderDamage.getValue()) {
+                renderDamageText2D(event, textPos, lastPlaceTarget.damage, alpha);
+            }
+            
+            if (renderCrystalIcon.getValue()) {
+                renderCrystalIcon2D(event, textPos, alpha);
+            }
         }
+        checkUnregister();
+    }
+
+    private void renderCrystalIcon2D(Render2DEvent event, Vec3 pos, float alpha) {
+        if (alpha < 0.15f) return; // Don't render if too faded
+        
+        float[] screen = MatrixCapture.worldToScreen(pos.x, pos.y, pos.z);
+        if (screen == null) return;
+
+        float anchorX = screen[0];
+        float anchorY = screen[1];
+
+        float scale = crystalIconScale.getValue();
+        float iconSize = 16f * scale;
+
+        event.getContext().pose().pushMatrix();
+        event.getContext().pose().translate(anchorX, anchorY + crystalIconYOffset.getValue());
+        event.getContext().pose().scale(scale, scale);
+        event.getContext().renderItem(new ItemStack(Items.END_CRYSTAL), -8, -8);
+        event.getContext().pose().popMatrix();
     }
 
     private void renderDamageText2D(Render2DEvent event, Vec3 pos, float damage, float alpha) {

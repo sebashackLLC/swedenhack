@@ -25,6 +25,7 @@ public class HudClientModule extends Module {
     public final Setting<Color> radarFriendColor = color("Radar Friend Color",   0, 255, 100, 255).setPage("Colors");
     public final Setting<Color> radarSelfColor   = color("Radar Self Color",   255, 255, 255, 255).setPage("Colors");
     public final Setting<Color> activeModuleColor = color("Active Module Color", 0,   255,   100, 255).setPage("Colors");
+    public final Setting<Boolean> syncColor = bool("Sync Color", false).setPage("Colors");
 
     public final Setting<ActiveModulesSnapTo> activeModulesSnap =
             mode("SnapTo", ActiveModulesSnapTo.DEFAULT).setPage("Elements");

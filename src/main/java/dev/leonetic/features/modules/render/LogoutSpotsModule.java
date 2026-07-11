@@ -109,6 +109,10 @@ public class LogoutSpotsModule extends Module {
         }
     }
 
+    public Map<UUID, LogoutSpot> getLoggedPlayers() {
+        return loggedPlayers;
+    }
+
     @Override
     public String getDisplayInfo() {
         if (nullCheck()) return loggedPlayers.isEmpty() ? null : String.valueOf(loggedPlayers.size());

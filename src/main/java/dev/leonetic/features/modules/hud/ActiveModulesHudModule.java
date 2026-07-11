@@ -73,9 +73,20 @@ public class ActiveModulesHudModule extends HudModule implements Jsonable {
 
         GuiGraphics ctx = event.getContext();
         HudClientModule hudClient = Swedenhack.moduleManager.getModuleByClass(HudClientModule.class);
+        ClickGuiModule clickGui = ClickGuiModule.getInstance();
+        
         int activeColor = hudClient != null
                 ? hudClient.activeModuleColor.getValue().getRGB()
                 : Swedenhack.colorManager.getAsIntFullAlpha("chat");
+        boolean useGradient = false;
+        
+        if (hudClient != null && hudClient.syncColor.getValue() && clickGui != null) {
+            if (clickGui.theme.getValue() == ClickGuiModule.Theme.GRADIENT) {
+                useGradient = true;
+            } else {
+                activeColor = Swedenhack.colorManager.getAsIntFullAlpha("ui");
+            }
+        }
 
         SnapTo snap = hudClient != null
                 ? SnapTo.valueOf(hudClient.activeModulesSnap.getValue().name())
@@ -93,7 +104,8 @@ public class ActiveModulesHudModule extends HudModule implements Jsonable {
         int totalHeight = entries.size() * mc.font.lineHeight;
         int startY = startY(snap, hudClient, totalHeight);
 
-        for (String name : entries) {
+        for (int i = 0; i < entries.size(); i++) {
+            String name = entries.get(i);
             Module module = Swedenhack.moduleManager.getModuleByName(name);
             if (module == null) continue;
 
@@ -104,10 +116,17 @@ public class ActiveModulesHudModule extends HudModule implements Jsonable {
 
             int x = xForSnap(snap, lineWidth, maxWidth);
 
-            int nameColor = module.isEnabled() ? activeColor : GRAY;
+            int nameColor;
+            if (useGradient && module.isEnabled()) {
+                nameColor = clickGui.gradientAt(startY).getRGB();
+            } else {
+                nameColor = module.isEnabled() ? activeColor : GRAY;
+            }
+            
             ctx.drawString(mc.font, display, x, startY, nameColor);
             if (!suffix.isEmpty()) {
-                ctx.drawString(mc.font, suffix, x + mc.font.width(display), startY, module.isEnabled() ? bindColor(module) : GRAY);
+                int bindColorVal = module.isEnabled() ? bindColor(module, startY) : GRAY;
+                ctx.drawString(mc.font, suffix, x + mc.font.width(display), startY, bindColorVal);
             }
 
             startY += mc.font.lineHeight;
@@ -148,9 +167,15 @@ public class ActiveModulesHudModule extends HudModule implements Jsonable {
         }
     }
 
-    private int bindColor(Module module) {
+    private int bindColor(Module module, float startY) {
         ClickGuiModule gui = ClickGuiModule.getInstance();
         if (gui == null) return GRAY;
+        
+        if (gui.theme.getValue() == ClickGuiModule.Theme.GRADIENT) {
+            Color gradientColor = gui.gradientAt(startY);
+            return new Color(gradientColor.getRed(), gradientColor.getGreen(), gradientColor.getBlue(), 255).getRGB();
+        }
+        
         Color accent = gui.categoryAccent(module.getCategory());
         return new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 255).getRGB();
     }

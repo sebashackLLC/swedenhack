@@ -64,13 +64,14 @@ public class ShadersModule extends Module {
     public Setting<Boolean> projectiles = bool("Projectiles", false).setPage("Entities");
     public Setting<Float>   projectileRange = num("ProjectileRange", 64f, 4f, 256f).setPage("Entities");
 
-    public Setting<Color> playerColor     = color("PlayerOutline",     255, 0,   0,   255).setPage("Colors");
-    public Setting<Color> friendColor     = color("FriendOutline",     0,   255, 100, 255).setPage("Colors");
-    public Setting<Color> monsterColor    = color("MonsterOutline",    200, 60,  60,  255).setPage("Colors");
-    public Setting<Color> animalColor     = color("AnimalOutline",     255, 200, 60,  255).setPage("Colors");
-    public Setting<Color> itemColor       = color("ItemOutline",       255, 255, 255, 255).setPage("Colors");
-    public Setting<Color> crystalColor    = color("CrystalOutline",    0,   200, 255, 255).setPage("Colors");
-    public Setting<Color> projectileColor = color("ProjectileOutline", 200, 200, 0,   255).setPage("Colors");
+    public Setting<Boolean> syncColor     = bool("SyncColor", false).setPage("Colors");
+    public Setting<Color> playerColor     = color("PlayerOutline",     255, 0,   0,   255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
+    public Setting<Color> friendColor     = color("FriendOutline",     0,   255, 100, 255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
+    public Setting<Color> monsterColor    = color("MonsterOutline",    200, 60,  60,  255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
+    public Setting<Color> animalColor     = color("AnimalOutline",     255, 200, 60,  255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
+    public Setting<Color> itemColor       = color("ItemOutline",       255, 255, 255, 255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
+    public Setting<Color> crystalColor    = color("CrystalOutline",    0,   200, 255, 255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
+    public Setting<Color> projectileColor = color("ProjectileOutline", 200, 200, 0,   255).setPage("Colors").setVisibility(v -> !syncColor.getValue());
 
     public Setting<Boolean> hand          = bool("HandShaders", false).setPage("Hand");
     public Setting<Boolean> handOutline   = bool("HandOutline", true).setPage("Hand");
@@ -264,6 +265,9 @@ public class ShadersModule extends Module {
     }
 
     private Color colorFor(Entity entity) {
+        if (syncColor.getValue()) {
+            return Swedenhack.colorManager.get("ui");
+        }
         if (entity instanceof AbstractClientPlayer p && !(entity instanceof LocalPlayer)) {
             return Swedenhack.friendManager.isFriend(p) ? friendColor.getValue() : playerColor.getValue();
         }

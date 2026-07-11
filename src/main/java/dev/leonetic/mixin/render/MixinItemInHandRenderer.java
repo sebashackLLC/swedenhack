@@ -6,6 +6,7 @@ import dev.leonetic.features.modules.render.CrystalHandModule;
 import dev.leonetic.features.modules.render.NoRenderModule;
 import dev.leonetic.features.modules.render.ShadersModule;
 import dev.leonetic.features.modules.render.ViewModel;
+import dev.leonetic.features.modules.render.SmallShield;
 import dev.leonetic.mixin.entity.EntityRotationAccessor;
 import dev.leonetic.util.render.HandShaderRender;
 import dev.leonetic.util.render.HandSilhouetteCollector;
@@ -49,6 +50,26 @@ public class MixinItemInHandRenderer {
             this.oMainHandHeight = 1.0f;
             this.oOffHandHeight = 1.0f;
         }
+        SmallShield smallShield = SmallShield.getInstance();
+        if (smallShield != null && smallShield.isEnabled() && smallShield.normal.getValue()) {
+            LocalPlayer player = Minecraft.getInstance().player;
+            if (player != null) {
+                boolean mainShield = player.getMainHandItem().getItem() instanceof net.minecraft.world.item.ShieldItem
+                    || player.getMainHandItem().getItem().getDescriptionId().toLowerCase().contains("shield")
+                    || player.getMainHandItem().getItem().toString().toLowerCase().contains("shield");
+                boolean offShield = player.getOffhandItem().getItem() instanceof net.minecraft.world.item.ShieldItem
+                    || player.getOffhandItem().getItem().getDescriptionId().toLowerCase().contains("shield")
+                    || player.getOffhandItem().getItem().toString().toLowerCase().contains("shield");
+                if (mainShield) {
+                    this.mainHandHeight = 1.0f;
+                    this.oMainHandHeight = 1.0f;
+                }
+                if (offShield) {
+                    this.offHandHeight = 1.0f;
+                    this.oOffHandHeight = 1.0f;
+                }
+            }
+        }
     }
 
     @Inject(method = "renderArmWithItem", at = @At("HEAD"))
@@ -60,6 +81,24 @@ public class MixinItemInHandRenderer {
             if (px != 0) {
                 boolean isLeftHand = (hand == net.minecraft.world.InteractionHand.OFF_HAND) ^ (player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT);
                 poseStack.translate(isLeftHand ? -px : px, 0, 0);
+            }
+        }
+        SmallShield smallShield = SmallShield.getInstance();
+        if (smallShield != null && smallShield.isEnabled()) {
+            boolean isShield = stack.getItem() instanceof net.minecraft.world.item.ShieldItem
+                || stack.getItem().getDescriptionId().toLowerCase().contains("shield")
+                || stack.getItem().toString().toLowerCase().contains("shield");
+            if (isShield) {
+                if (player.tickCount % 100 == 0) {
+                    dev.leonetic.features.commands.Command.sendMessage("{green}[SmallShield] Active on " + hand + "! Size: " + smallShield.size.getValue());
+                }
+                if (hand == net.minecraft.world.InteractionHand.MAIN_HAND) {
+                    poseStack.translate(smallShield.mainX.getValue(), smallShield.mainY.getValue(), smallShield.mainZ.getValue());
+                } else {
+                    poseStack.translate(smallShield.offX.getValue(), smallShield.offY.getValue(), smallShield.offZ.getValue());
+                }
+                float sizeVal = smallShield.size.getValue();
+                poseStack.scale(sizeVal, sizeVal, sizeVal);
             }
         }
     }

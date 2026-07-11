@@ -9,6 +9,8 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 public final class DamageUtil implements Util {
@@ -54,14 +56,78 @@ public final class DamageUtil implements Util {
     }
 
     private static float protectionAbsorb(float dmg) {
+        return protectionAbsorb(dmg, mc.player);
+    }
+
+    private static float protectionAbsorb(float dmg, net.minecraft.world.entity.LivingEntity entity) {
         int epf = 0;
         for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
-            ItemStack stack = mc.player.getItemBySlot(slot);
+            ItemStack stack = entity.getItemBySlot(slot);
             if (stack.isEmpty()) continue;
             epf += EnchantmentUtil.getLevel(Enchantments.PROTECTION, stack);
             epf += 2 * EnchantmentUtil.getLevel(Enchantments.BLAST_PROTECTION, stack);
         }
         if (epf > 20) epf = 20;
         return CombatRules.getDamageAfterMagicAbsorb(dmg, epf);
+    }
+
+    public static float getExposure(Vec3 source, net.minecraft.world.entity.Entity entity) {
+        if (mc.level == null || entity == null) return 0f;
+        AABB box = entity.getBoundingBox();
+        double dx = 1.0 / ((box.maxX - box.minX) * 2.0 + 1.0);
+        double dy = 1.0 / ((box.maxY - box.minY) * 2.0 + 1.0);
+        double dz = 1.0 / ((box.maxZ - box.minZ) * 2.0 + 1.0);
+        double stepX = (1.0 - Math.floor(1.0 / dx) * dx) / 2.0;
+        double stepZ = (1.0 - Math.floor(1.0 / dz) * dz) / 2.0;
+        if (dx < 0.0 || dy < 0.0 || dz < 0.0) {
+            return 0.0f;
+        }
+        int unblocked = 0;
+        int total = 0;
+        for (double x = 0.0; x <= 1.0; x += dx) {
+            for (double y = 0.0; y <= 1.0; y += dy) {
+                for (double z = 0.0; z <= 1.0; z += dz) {
+                    double px = Mth.lerp(x, box.minX, box.maxX);
+                    double py = Mth.lerp(y, box.minY, box.maxY);
+                    double pz = Mth.lerp(z, box.minZ, box.maxZ);
+                    Vec3 point = new Vec3(px + stepX, py, pz + stepZ);
+
+                    net.minecraft.world.level.ClipContext context = new net.minecraft.world.level.ClipContext(
+                        point,
+                        source,
+                        net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                        net.minecraft.world.level.ClipContext.Fluid.NONE,
+                        entity
+                    );
+                    if (mc.level.clip(context).getType() == net.minecraft.world.phys.HitResult.Type.MISS) {
+                        unblocked++;
+                    }
+                    total++;
+                }
+            }
+        }
+        return total == 0 ? 0.0f : (float) unblocked / total;
+    }
+
+    public static float crystalDamage(net.minecraft.world.entity.LivingEntity target, Vec3 explosionPos) {
+        if (mc.player == null || mc.level == null || target == null) return 0f;
+        double dist = target.position().distanceTo(explosionPos);
+        if (dist > 12.0) return 0f;
+
+        float exposure = getExposure(explosionPos, target);
+        double impact = (1.0 - dist / 12.0) * exposure;
+        if (impact <= 0) return 0f;
+
+        float dmg = baseExplosionDamage(impact);
+
+        float armor = (float) target.getAttributeValue(Attributes.ARMOR);
+        float toughness = (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS);
+        dmg = armorAbsorb(dmg, armor, toughness);
+
+        MobEffectInstance resistance = target.getEffect(MobEffects.RESISTANCE);
+        if (resistance != null) dmg *= 1.0f - 0.2f * (resistance.getAmplifier() + 1);
+
+        dmg = protectionAbsorb(dmg, target);
+        return Math.max(dmg, 0f);
     }
 }

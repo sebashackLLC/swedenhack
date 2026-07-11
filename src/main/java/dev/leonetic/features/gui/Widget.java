@@ -98,7 +98,13 @@ public class Widget extends Feature {
         Color cat = accentAt(headerTop);
         int catRGB = cat.getRGB();
 
-        RenderUtil.rect(context, this.x, headerTop, this.x + this.width, headerBottom, catRGB);
+        ClickGuiModule cgm = ClickGuiModule.getInstance();
+        if (cgm != null && cgm.theme.getValue() == ClickGuiModule.Theme.GRADIENT) {
+            Color[] pair = ClickGuiModule.gradientPair(headerTop);
+            RenderUtil.horizontalGradient(context, this.x, headerTop, this.x + this.width, headerBottom, pair[0], pair[1]);
+        } else {
+            RenderUtil.rect(context, this.x, headerTop, this.x + this.width, headerBottom, catRGB);
+        }
 
         RenderUtil.rect(context, this.x, headerTop, this.x + this.width, headerTop + 1f, GuiTheme.HIGHLIGHT_TOP);
 
@@ -129,7 +135,28 @@ public class Widget extends Feature {
 
             scrollSelectionIntoView(animatedHeight, maxScroll);
 
-            RenderUtil.rect(context, this.x, bodyTop, this.x + this.width, scissorBottom, 0x77000000);
+            if (cgm != null && cgm.theme.getValue() == ClickGuiModule.Theme.GRADIENT) {
+                float speed = cgm.gradientSpeed.getValue();
+                long now = System.currentTimeMillis();
+                float pos = ((now / 250.0f * speed) % 4.0f);
+                float phase = pos <= 2.0f ? pos / 2.0f : (4.0f - pos) / 2.0f;
+                float phase2 = (phase + 0.5f) % 1.0f;
+                Color gs = cgm.gradientStart.getValue();
+                Color ge = cgm.gradientEnd.getValue();
+                int r1 = (int)(gs.getRed() + (ge.getRed() - gs.getRed()) * phase);
+                int g1 = (int)(gs.getGreen() + (ge.getGreen() - gs.getGreen()) * phase);
+                int b1 = (int)(gs.getBlue() + (ge.getBlue() - gs.getBlue()) * phase);
+                int a1 = (int)(gs.getAlpha() + (ge.getAlpha() - gs.getAlpha()) * phase) * 80 / 255;
+                int r2 = (int)(gs.getRed() + (ge.getRed() - gs.getRed()) * phase2);
+                int g2 = (int)(gs.getGreen() + (ge.getGreen() - gs.getGreen()) * phase2);
+                int b2 = (int)(gs.getBlue() + (ge.getBlue() - gs.getBlue()) * phase2);
+                int a2 = (int)(gs.getAlpha() + (ge.getAlpha() - gs.getAlpha()) * phase2) * 80 / 255;
+                Color top = new Color(r1, g1, b1, Math.min(255, a1));
+                Color bottom = new Color(r2, g2, b2, Math.min(255, a2));
+                RenderUtil.verticalGradient(context, this.x, bodyTop, this.x + this.width, scissorBottom, top, bottom);
+            } else {
+                RenderUtil.rect(context, this.x, bodyTop, this.x + this.width, scissorBottom, 0x77000000);
+            }
 
             ScissorUtil.enable(context, x, bodyTop, x + width, scissorBottom);
 

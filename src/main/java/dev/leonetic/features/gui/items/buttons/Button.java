@@ -4,6 +4,7 @@ import dev.leonetic.features.gui.GuiTheme;
 import dev.leonetic.features.gui.SwedenhackGui;
 import dev.leonetic.features.gui.Widget;
 import dev.leonetic.features.gui.items.Item;
+import dev.leonetic.features.modules.client.ClickGuiModule;
 import dev.leonetic.util.render.RenderUtil;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -49,6 +50,20 @@ public class Button extends Item {
     public static void drawRow(GuiGraphics context, float x1, float y1, float x2, float y2,
                                boolean enabled, boolean hovering) {
         Color accent = Widget.currentAccent != null ? Widget.currentAccent : new Color(70, 75, 82);
+
+        ClickGuiModule cgm = ClickGuiModule.getInstance();
+        if (cgm != null && cgm.theme.getValue() == ClickGuiModule.Theme.GRADIENT) {
+            if (enabled) {
+                Color[] pair = ClickGuiModule.gradientPair(y1);
+                int a = hovering ? 60 : 100;
+                Color left = new Color(pair[0].getRed(), pair[0].getGreen(), pair[0].getBlue(), a);
+                Color right = new Color(pair[1].getRed(), pair[1].getGreen(), pair[1].getBlue(), a);
+                RenderUtil.horizontalGradient(context, x1, y1, x2, y2, left, right);
+            } else if (hovering) {
+                RenderUtil.rect(context, x1, y1, x2, y2, 0x55AAAAAB);
+            }
+            return;
+        }
 
         if (enabled) {
             int color = hovering ? GuiTheme.withAlpha(accent, 55).getRGB() : accent.getRGB();
